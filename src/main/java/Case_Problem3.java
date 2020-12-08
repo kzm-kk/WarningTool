@@ -1,5 +1,6 @@
 public class Case_Problem3 {
     private Car repository = new Car();
+    String tst = repository.getName();
     //inner/nested クラスの private なメソッドを enclosing クラスから呼び出せなくなったのでエラー
     public Car getAlldata(){
         Car data = new Car();
