@@ -25,8 +25,7 @@ public class Main {
     public static ArrayList<String> memory_classname = new ArrayList<>();
     public static HashMap<String, String> memory_extend = new HashMap<>();
     public static HashMap<String, ArrayList<String>> memory_implement = new HashMap<>();
-    public static HashMap<String, HashMap<String, String>> memory_classfield = new HashMap<>();
-    public static HashMap<String, ArrayList<FieldDeclaration>> memory_classfield2 = new HashMap<>();
+    public static HashMap<String, ArrayList<FieldDeclaration>> memory_classfield = new HashMap<>();
     public static HashMap<String, ArrayList<MethodDeclaration>> memory_classmethod = new HashMap<>();
     public static HashMap<String, ArrayList<MethodCallExpr>> memory_calling = new HashMap<>();
     public static HashMap<String, ArrayList<String>> memory_innerclass = new HashMap<>();
@@ -35,7 +34,7 @@ public class Main {
 
         String path_root = "/Users/kzm0308/Desktop/workspace/PartyBattleGame/app/src/main/java/com/example/kzm/partybattlegame";
 
-        SourceRoot root = new SourceRoot(Paths.get(path_root));
+        SourceRoot root = new SourceRoot(Paths.get("./src/main/java"));
         System.out.println(root.toString());
         List<ParseResult<CompilationUnit>> cu2 = root.tryToParse("");
 
@@ -59,38 +58,44 @@ public class Main {
             //judge_case1(classname);
             //judge_case2(classname);
             //judge_case3(classname);
-            //judge_case5and7(classname, "case5");
+            judge_case5and7(classname, "case5");
             judge_case5and7(classname, "case7");
             System.out.println("check finished:"+classname+"\n");
         }
 
-       System.out.println(memory_extend.get("MainActivity"));
+       /*System.out.println(memory_extend.get("MainActivity"));
         for(String name:memory_classname){
             if(name.equals(memory_extend.get("MainActivity")))System.out.println("ok");
-        }
+        }*/
 
     }
 
     public static void judge_case1(String key){
         System.out.println("check start:case1\n");
-            HashMap<String, String> judge_hash = memory_classfield.get(key);//今のクラスのフィールド取得
-            if(judge_hash != null) {
-                for (String extend_field : judge_hash.keySet()) {//フィールドを１つずつ見る
-
+        if(memory_classfield.get(key) != null) {
+            boolean already_warning_interface = false;
+            boolean already_warning_superclass = false;
+            for (FieldDeclaration field : memory_classfield.get(key)) {
+                int size = field.getVariables().size();
+                for (int i = 0; i < size; i++) {
+                    String extend_field = field.getVariable(i).getNameAsString();
                     //implementsの確認、再帰関数使用
+
                     if (memory_implement.get(key) != null) {
                         for (String name_interface : memory_implement.get(key)) {
-                            if(!check_import(name_interface))check_ImplementField(name_interface, extend_field);
+                            already_warning_interface = check_import(name_interface, already_warning_interface);
+                            if (!check_import(name_interface, already_warning_interface)) check_ImplementField(name_interface, extend_field);
                         }
                     }
 
                     //extendsの確認、再帰関数使用
                     if (memory_extend.get(key) != null) {
-                        if(!check_import(memory_extend.get(key)))check_ExtendField(memory_extend.get(key), extend_field);
+                        already_warning_superclass = check_import(memory_extend.get(key), already_warning_superclass);
+                        if (!check_import(memory_extend.get(key), already_warning_superclass)) check_ExtendField(memory_extend.get(key), extend_field);
                     }
-
                 }
             }
+        }
         System.out.println("check finished:case1\n");
     }
 
@@ -173,59 +178,22 @@ public class Main {
                         for (int i = 0; i < size; i++) {
 
                             String param = detail.getParameter(i).getNameAsString();
-                            VoidVisitor<?> visitor = new Checking_Case5and7_2(key, methodname, param, mode);
+                            VoidVisitor<?> visitor = new Checking_Case5and7(key, methodname, param, mode);
                             detail.accept(visitor, null);//visitorを利用して捜索と警告を両方行う
 
                         }
                     }
-
-                    /*String cut_field = "";
-                    //implementsの確認、再帰関数使用
-                    if (memory_implement.get(key) != null) {
-                        //System.out.println("checking:implements\n");
-                        for (String name_interface : memory_implement.get(key)) {
-                            cut_field = check_ImplementMethod(name_interface, mode);
-                        }
-                    }
-
-                    //extendsの確認、再帰関数使用
-                    if (memory_extend.get(key) != null) {
-                        //System.out.println("checking:extends\n");
-                        cut_field = check_ExtendMethod(memory_extend.get(key), mode);
-                    }
-
-
-                    boolean flag = !cut_field.equals("");
-                    //get/set探す部分(継承先)
-                    if(flag) {
-                        ArrayList<MethodDeclaration> extend_list = memory_classmethod.get(key);
-                        if(extend_list == null) continue;
-                        for (MethodDeclaration md : extend_list) {
-                            int size = md.getParameters().size();
-                            if (size == 0) break;
-                            else {
-                                String methodname = md.getNameAsString();
-                                for (int i = 0; i < size; i++) {
-                                    String param = md.getParameter(i).getNameAsString();
-                                    if (param.equals(cut_field)) {
-                                        VoidVisitor<?> visitor = new Checking_Case5and7(key, methodname, param, mode);
-                                        md.accept(visitor, null);//visitorを利用して捜索と警告を両方行う
-                                    }
-                                }
-                            }
-                        }
-                    }*/
-
                 }
             }
         System.out.println("check finished:"+ mode +"\n");
     }
 
     public static void check_ExtendField(String origin, String extend_field){
-        check_import(origin);
-        HashMap<String, String> check_hash = memory_classfield.get(origin);
-        if(check_hash != null) {
-            for (String origin_field : check_hash.keySet()) {
+        
+        for(FieldDeclaration field:memory_classfield.get(origin)){
+            int size = field.getVariables().size();
+            for (int i = 0; i < size; i++) {
+                String origin_field = field.getVariable(i).getNameAsString();
                 if (extend_field.equals(origin_field)) {
                     System.out.println("same name field:" + origin_field + "(origin), "
                             + extend_field + "(extends)"
@@ -240,20 +208,20 @@ public class Main {
         }
     }
 
-    public static void check_ImplementField(String origin, String field){
-        check_import(origin);
-        HashMap<String, String> check_hash = memory_classfield.get(origin);
-        if(check_hash != null) {
-            for (String origin_field : check_hash.keySet()) {
-                if (field.equals(origin_field)) {
+    public static void check_ImplementField(String origin, String implement_field){
+        for(FieldDeclaration field:memory_classfield.get(origin)) {
+            int size = field.getVariables().size();
+            for (int i = 0; i < size; i++) {
+                String origin_field = field.getVariable(i).getNameAsString();
+                if (implement_field.equals(origin_field)) {
                     System.out.println("same name field:" + origin_field + "(interface), "
-                            + field + "(implements-class)"
+                            + implement_field + "(implements-class)"
                             + "\nYou should change name of field(implements-class).\n");
                     break;
                 }
             }
         }
-        if(memory_extend.get(origin) != null) check_ExtendField(origin, field);
+        if(memory_extend.get(origin) != null) check_ExtendField(origin, implement_field);
     }
 
     public static boolean search_get(String mode, MethodDeclaration detail){
@@ -287,8 +255,8 @@ public class Main {
     }
 
     public static boolean match_field(String method, String xxx){
-        if(memory_classfield2.get(method) != null){
-            for (FieldDeclaration field : memory_classfield2.get(method)) {
+        if(memory_classfield.get(method) != null){
+            for (FieldDeclaration field : memory_classfield.get(method)) {
                 int size = field.getVariables().size();
                 for (int i = 0; i < size; i++) {
                     String fieldname = field.getVariable(i).getNameAsString();
@@ -298,92 +266,10 @@ public class Main {
                 }
             }
         }
-        /*if(memory_classfield.get(method) != null) {
-            for (String key : memory_classfield.get(method).keySet()) {
-                if (key.equals(xxx)) {
-                    return true;
-                }
-            }
-        }*/
         return false;
     }
 
-    public static String check_ExtendMethod(String origin, String mode){
-        ArrayList<MethodDeclaration> check_array = memory_classmethod.get(origin);
-        String cut_field = "";
-        if(check_array != null) {
-            for(MethodDeclaration detail:check_array) {
-                String name = detail.getNameAsString();
-                if(search_get(mode, detail))
-                cut_field = name.split("get")[1].toLowerCase();
-                if (cut_field.equals("")) {
-                    if(search_set(mode, detail))
-                        cut_field = name.split("set")[1].toLowerCase();
-                    if (cut_field.equals("")) {
-                        continue;
-                    } else {
-                        if(match_field(origin, cut_field) && mode.equals("case7"))
-                            cut_field = "";
-                        else break;
-                    }
-                } else {
-                    if(match_field(origin, cut_field) && mode.equals("case7"))
-                        cut_field = "";
-                    else break;
-                }
-            }
-        }
-        boolean flag = cut_field.equals("");
-        if(memory_extend.get(origin) != null && flag){
-            cut_field = check_ExtendMethod(memory_extend.get(origin), mode);
-            flag = cut_field.equals("");
-        }
-        if(memory_implement.get(origin) != null && flag){
-            for(String key:memory_implement.get(origin)){
-                cut_field = check_ImplementMethod(key, mode);
-                flag = cut_field.equals("");
-                if(!flag) break;
-            }
-        }
-        return cut_field;
-    }
-
-    public static String check_ImplementMethod(String origin, String mode){
-        ArrayList<MethodDeclaration> check_array = memory_classmethod.get(origin);
-        String cut_field = "";
-        if(check_array != null) {
-            for(MethodDeclaration detail:check_array) {
-                String name = detail.getNameAsString();
-                if(search_get(mode, detail))
-                    cut_field = name.split("get")[1].toLowerCase();
-                if (cut_field.equals("")) {
-                    if(search_set(mode, detail))
-                        cut_field = name.split("set")[1].toLowerCase();
-                    if (cut_field.equals("")) {
-                        continue;
-                    } else {
-                        if(match_field(origin, cut_field) && mode.equals("case7"))
-                            cut_field = "";
-                        else break;
-                    }
-                } else {
-                    if(match_field(origin, cut_field) && mode.equals("case7"))
-                        cut_field = "";
-                    else break;
-                }
-            }
-        }
-        boolean flag = cut_field.equals("");
-        while (flag){
-            if(memory_extend.get(origin) != null){
-                cut_field = check_ExtendMethod(memory_extend.get(origin), mode);
-                flag = cut_field.equals("");
-            } else break;
-        }
-        return cut_field;
-    }
-
-    public static boolean check_ExtendMethod2(String origin, String mode){
+    public static boolean check_ExtendMethod(String origin, String mode){
         ArrayList<MethodDeclaration> check_array = memory_classmethod.get(origin);
         boolean found = false;
         if(check_array != null) {
@@ -398,19 +284,19 @@ public class Main {
             }
         }
         if(memory_extend.get(origin) != null && !found){
-            found = check_ExtendMethod2(memory_extend.get(origin), mode);
+            found = check_ExtendMethod(memory_extend.get(origin), mode);
         }
         if(memory_implement.get(origin) != null && !found){
             for(String key:memory_implement.get(origin)){
-                found = check_ImplementMethod2(key, mode);
+                found = check_ImplementMethod(key, mode);
                 if(found) break;
             }
         }
-        found = check_import(origin);
+        found = check_import(origin, false);
         return found;
     }
 
-    public static boolean check_ImplementMethod2(String origin, String mode){
+    public static boolean check_ImplementMethod(String origin, String mode){
         ArrayList<MethodDeclaration> check_array = memory_classmethod.get(origin);
         boolean found = false;
         if(check_array != null) {
@@ -426,18 +312,21 @@ public class Main {
         }
         while (found){
             if(memory_extend.get(origin) != null){
-                found = check_ExtendMethod2(memory_extend.get(origin), mode);
+                found = check_ExtendMethod(memory_extend.get(origin), mode);
             } else break;
         }
-        found = check_import(origin);
+        found = check_import(origin, false);
         return found;
     }
 
     private static class FirstVisitor extends VoidVisitorAdapter<Void>{
+        ArrayList<ImportDeclaration> Import_list = new ArrayList<>();
 
         @Override
         public void visit(ImportDeclaration md, Void arg){
             super.visit(md, arg);
+            Import_list.add(md);
+            
         }
 
         @Override
@@ -490,45 +379,12 @@ public class Main {
                 SomeVisitor visitor = new SomeVisitor(md.getNameAsString());
                 md.accept(visitor, null);
             }
-
-
-            /*String reserve_name = "";
-            if(md.isInnerClass()) {
-                if(memory_innerclass.get(classname) == null) inner_list = new ArrayList<>();
-                else inner_list = memory_innerclass.get(classname);
-                reserve_name = classname;
-            }
-            classname = md.getNameAsString();
-            memory_classname.add(classname);
-            System.out.println(classname);
-            int size_extend = md.getExtendedTypes().size();
-            int size_implement = md.getImplementedTypes().size();
-            if(size_extend != 0){
-                memory_extend.put(classname, md.getExtendedTypes().get(0).getNameAsString());
-            }
-            if(size_implement != 0){
-                ArrayList<String> names = new ArrayList<>();
-                for(int i = 0; i < size_implement ;i++){
-                    names.add(md.getImplementedTypes(i).getNameAsString());
-                }
-                memory_implement.put(classname, names);
-            }
-            if(md.isInnerClass()){
-                inner_list.add(classname);
-                memory_innerclass.put(reserve_name, inner_list);
-                super.visit(md, arg);
-                classname = reserve_name;
-            } else
-                super.visit(md, arg);*/
         }
 
         @Override//宣言名
         public void visit(FieldDeclaration md, Void arg){
             field_list.add(md);
-            memory_classfield2.put(classname, field_list);
-            field_memory.put(md.getVariable(0).getNameAsString(),
-                    md.getVariable(0).getType().toString());
-            memory_classfield.put(classname, field_memory);
+            memory_classfield.put(classname, field_list);
             super.visit(md, arg);
         }
 
@@ -558,6 +414,7 @@ public class Main {
 
     }
 
+    //継承先の呼び出し箇所→メソッドの存在場所の順(これまでと反対)に探す新しいバージョン
     private static class Checking_Case5and7 extends VoidVisitorAdapter<Void> {
         ArrayList<MethodCallExpr> list = new ArrayList<>();
         String classname = "";
@@ -565,49 +422,6 @@ public class Main {
         String looking_argument = "";
         String mode = "";
         public Checking_Case5and7(String classname,String methodname, String looking_argument, String mode){
-            this.classname = classname;
-            this.methodname = methodname;
-            this.looking_argument = looking_argument;
-            this.mode = mode;
-        }
-
-        @Override
-        public void visit(MethodCallExpr md, Void arg){
-            list.add(md);
-            memory_calling.put("",list);
-            boolean flag = false;
-            if(mode.equals("case5"))flag = md.getScope().isEmpty() ;
-            else if(mode.equals("case7") && !md.getScope().isEmpty())
-                flag = md.getScope().get().isThisExpr();
-            if(flag) {
-                String methodname = md.getNameAsString();
-                if (methodname.matches("get[A-Z].*")) {
-                    if (md.getArguments() == null) {
-                        System.out.println(mode+":Future Error/"+md.getRange().get());
-                    }
-                } else if (methodname.matches("set[A-Z].*")) {
-                    int size_param = md.getArguments().size();
-                    if (size_param == 1) {
-                        String argument = md.getArgument(0).toString();
-                        if (argument.equals(looking_argument)) {
-                            System.out.println("line "+md.getRange().get().begin.line);
-                            System.out.println("This code may give the following error after converting to Kotlin: val cannnot reassigned.");
-                            System.out.println("It is recommended to rename the argument \""+looking_argument+"\" in method \""+ this.methodname +"\".");
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    //継承先の呼び出し箇所→メソッドの存在場所の順(これまでと反対)に探す新しいバージョン
-    private static class Checking_Case5and7_2 extends VoidVisitorAdapter<Void> {
-        ArrayList<MethodCallExpr> list = new ArrayList<>();
-        String classname = "";
-        String methodname = "";
-        String looking_argument = "";
-        String mode = "";
-        public Checking_Case5and7_2(String classname,String methodname, String looking_argument, String mode){
             this.classname = classname;
             this.methodname = methodname;
             this.looking_argument = looking_argument;
@@ -638,14 +452,14 @@ public class Main {
                                 //implementsの確認、再帰関数使用
                                 if (memory_implement.get(classname) != null) {
                                     for (String name_interface : memory_implement.get(classname)) {
-                                        warning_flag = check_ImplementMethod2(name_interface, mode);
+                                        warning_flag = check_ImplementMethod(name_interface, mode);
 
                                     }
                                 }
 
                                 //extendsの確認、再帰関数使用
                                 if (memory_extend.get(classname) != null && !warning_flag) {
-                                    warning_flag = check_ExtendMethod2(memory_extend.get(classname), mode);
+                                    warning_flag = check_ExtendMethod(memory_extend.get(classname), mode);
                                 }
 
                                 if(warning_flag){
@@ -676,14 +490,14 @@ public class Main {
                                 //implementsの確認、再帰関数使用
                                 if (memory_implement.get(classname) != null) {
                                     for (String name_interface : memory_implement.get(classname)) {
-                                        warning_flag = check_ImplementMethod2(name_interface, mode);
+                                        warning_flag = check_ImplementMethod(name_interface, mode);
 
                                     }
                                 }
 
                                 //extendsの確認、再帰関数使用
                                 if (memory_extend.get(classname) != null && !warning_flag) {
-                                    warning_flag = check_ExtendMethod2(memory_extend.get(classname), mode);
+                                    warning_flag = check_ExtendMethod(memory_extend.get(classname), mode);
                                 }
 
                                 if (warning_flag) {
@@ -700,7 +514,7 @@ public class Main {
     }
 
     public static void check_initialize(String classname){
-            ArrayList<FieldDeclaration> field_list = memory_classfield2.get(classname);
+            ArrayList<FieldDeclaration> field_list = memory_classfield.get(classname);
             if(field_list != null) {
                 System.out.println("start field checking\n");
                 for (FieldDeclaration field : field_list) {
@@ -721,13 +535,28 @@ public class Main {
             }
     }
 
-    public static boolean check_import(String checkname){
+    public static boolean check_import(String checkname, boolean already){
         for(String classname:memory_classname){
             if(classname.equals(checkname)){
                 return false;
             }
         }
-        System.out.println("\""+checkname+"\" is probably a library. Please check the contents if necessary.");
+        if(!already)System.out.println("\""+checkname+"\" is probably a library. Please check the detail of library if necessary.\n");
+        return true;
+    }
+
+    public static boolean check_import2(String checkname){
+        for(String classname:memory_classname){
+            for(String implement:memory_implement.get(classname)){
+
+            }
+        }
+        for(String classname:memory_classname){
+            if(classname.equals(checkname)){
+                return false;
+            }
+        }
+        System.out.println("\""+checkname+"\" is probably a library. Please check the detail of library if necessary.");
         return true;
     }
 
