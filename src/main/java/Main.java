@@ -1,12 +1,9 @@
 import com.github.javaparser.ParseResult;
-import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.*;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.MethodCallExpr;
-import com.github.javaparser.ast.nodeTypes.NodeWithType;
-import com.github.javaparser.ast.type.Type;
 import com.github.javaparser.ast.visitor.VoidVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import com.github.javaparser.symbolsolver.utils.SymbolSolverCollectionStrategy;
@@ -27,7 +24,6 @@ public class Main {
     public static HashMap<String, ArrayList<String>> memory_implement = new HashMap<>();
     public static HashMap<String, ArrayList<FieldDeclaration>> memory_classfield = new HashMap<>();
     public static HashMap<String, ArrayList<MethodDeclaration>> memory_classmethod = new HashMap<>();
-    public static HashMap<String, ArrayList<MethodCallExpr>> memory_calling = new HashMap<>();
     public static HashMap<String, ArrayList<String>> memory_innerclass = new HashMap<>();
 
     public static void main(String[] args) throws IOException {
@@ -292,7 +288,7 @@ public class Main {
                 if(found) break;
             }
         }
-        found = check_import(origin, false);
+        //found = check_import(origin, false);
         return found;
     }
 
@@ -310,12 +306,12 @@ public class Main {
                 } else break;
             }
         }
-        while (found){
+        while (!found){
             if(memory_extend.get(origin) != null){
                 found = check_ExtendMethod(memory_extend.get(origin), mode);
             } else break;
         }
-        found = check_import(origin, false);
+        //found = check_import(origin, false);
         return found;
     }
 
@@ -331,6 +327,7 @@ public class Main {
 
         @Override
         public void visit(ClassOrInterfaceDeclaration md, Void arg){
+            memory_import.put(md.getNameAsString(), Import_list);
             SomeVisitor visitor = new SomeVisitor(md.getNameAsString());
             md.accept(visitor, null);
         }
@@ -440,33 +437,35 @@ public class Main {
 
                 if (methodname.matches("get[A-Z].*")) {
                     if (md.getArguments() == null) {
-                        for(MethodDeclaration mine:memory_classmethod.get(classname)){
+                        boolean break_flag = false;
+                        for(MethodDeclaration mine:memory_classmethod.get(classname)) {
                             String mine_name = mine.getNameAsString();
                             String mine_type = mine.getTypeAsString();
                             int mine_sizeParameter = mine.getParameters().size();
-                            if(mine_name.equals(methodname)){//自分のメソッドの場合
+                            if (mine_name.equals(methodname)) {//自分のメソッドの場合
+                                break_flag = true;
                                 break;
-                            } else {//継承元クラス・インターフェースのデフォルトクラスの場合
-                                boolean warning_flag = false;
-
-                                //implementsの確認、再帰関数使用
-                                if (memory_implement.get(classname) != null) {
-                                    for (String name_interface : memory_implement.get(classname)) {
-                                        warning_flag = check_ImplementMethod(name_interface, mode);
-
-                                    }
+                            }
+                        }//継承元クラス・インターフェースのデフォルトクラスの場合
+                        if(!break_flag) {
+                            boolean warning_flag = false;
+                            System.out.println("warning");
+                            //implementsの確認、再帰関数使用
+                            if (memory_implement.get(classname) != null) {
+                                for (String name_interface : memory_implement.get(classname)) {
+                                    warning_flag = check_ImplementMethod(name_interface, mode);
                                 }
+                            }
 
-                                //extendsの確認、再帰関数使用
-                                if (memory_extend.get(classname) != null && !warning_flag) {
-                                    warning_flag = check_ExtendMethod(memory_extend.get(classname), mode);
-                                }
+                            //extendsの確認、再帰関数使用
+                            if (memory_extend.get(classname) != null && !warning_flag) {
+                                warning_flag = check_ExtendMethod(memory_extend.get(classname), mode);
+                            }
 
-                                if(warning_flag){
-                                    System.out.println("line "+md.getRange().get().begin.line);
-                                    System.out.println("This code may give the following error after converting to Kotlin: val cannnot reassigned.");
-                                    System.out.println("It is recommended to rename the argument \""+looking_argument+"\" in method \""+ this.methodname +"\".");
-                                }
+                            if (warning_flag) {
+                                System.out.println("line " + md.getRange().get().begin.line);
+                                System.out.println("This code may give the following error after converting to Kotlin: val cannnot reassigned.");
+                                System.out.println("It is recommended to rename the argument \"" + looking_argument + "\" in method \"" + this.methodname + "\".");
                             }
                         }
                     }
@@ -476,22 +475,27 @@ public class Main {
                         String argument = md.getArgument(0).toString();
                         String cut_field = methodname.split("set")[1].toLowerCase();
                         if (argument.equals(looking_argument) && cut_field.equals(argument)) {
+                            boolean break_flag = false;
                             for(MethodDeclaration mine:memory_classmethod.get(classname)) {
                                 String mine_name = mine.getNameAsString();
                                 String mine_type = mine.getTypeAsString();
                                 int mine_sizeParameter = mine.getParameters().size();
                                 if (mine_name.equals(methodname)) {//自分のメソッドの場合
                                     if(!mine_type.equals("void")){//返り値voidかつ引数１
-                                        if(mine_sizeParameter == 1)break;
+                                        if(mine_sizeParameter == 1){
+                                            break_flag = true;
+                                            break;
+                                        }
                                     }
                                 }
                             }//継承元クラス・インターフェースのデフォルトクラスの場合
+                            if(!break_flag) {
                                 boolean warning_flag = false;
+                                System.out.println("warning");
                                 //implementsの確認、再帰関数使用
                                 if (memory_implement.get(classname) != null) {
                                     for (String name_interface : memory_implement.get(classname)) {
                                         warning_flag = check_ImplementMethod(name_interface, mode);
-
                                     }
                                 }
 
@@ -505,7 +509,7 @@ public class Main {
                                     System.out.println("This code may give the following error after converting to Kotlin: val cannnot reassigned.");
                                     System.out.println("It is recommended to rename the argument \"" + looking_argument + "\" in method \"" + this.methodname + "\".");
                                 }
-
+                            }
                         }
                     }
                 }
