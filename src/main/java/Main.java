@@ -32,7 +32,6 @@ public class Main {
         String path_root = "/Users/kzm0308/Desktop/workspace/PartyBattleGame/app/src/main/java/com/example/kzm/partybattlegame";
 
         SourceRoot root = new SourceRoot(Paths.get(path_root));
-        System.out.println(root.toString());
         List<ParseResult<CompilationUnit>> cu2 = root.tryToParse("");
 
         String tmpname = "/Users/kzm0308/.gradle/caches/modules-2/files-2.1/com.github.javaparser/javaparser-core/3.16.1/440e5d7118e50d544418a96873d6322c4b1d5527";
@@ -379,20 +378,6 @@ public class Main {
                 md.accept(visitor, null);
             }
         }
-
-        /*@Override//宣言名
-        public void visit(FieldDeclaration md, Void arg){
-            fieldDeclarations.add(md);
-            memory_classfield.put(classname, fieldDeclarations);
-            super.visit(md, arg);
-        }
-
-        @Override
-        public void visit(MethodDeclaration md, Void arg) {
-            methodDeclarations.add(md);
-            memory_classmethod.put(classname, methodDeclarations);
-            super.visit(md, arg);
-        }*/
     }
 
     private static class Checking_Case3 extends VoidVisitorAdapter<Void>{
