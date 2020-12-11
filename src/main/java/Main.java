@@ -22,15 +22,15 @@ public class Main {
     public static ArrayList<String> memory_classname = new ArrayList<>();
     public static HashMap<String, String> memory_extend = new HashMap<>();
     public static HashMap<String, ArrayList<String>> memory_implement = new HashMap<>();
-    public static HashMap<String, ArrayList<FieldDeclaration>> memory_classfield = new HashMap<>();
-    public static HashMap<String, ArrayList<MethodDeclaration>> memory_classmethod = new HashMap<>();
+    public static HashMap<String, List<FieldDeclaration>> memory_classfield = new HashMap<>();
+    public static HashMap<String, List<MethodDeclaration>> memory_classmethod = new HashMap<>();
     public static HashMap<String, ArrayList<String>> memory_innerclass = new HashMap<>();
 
     public static void main(String[] args) throws IOException {
 
         String path_root = "/Users/kzm0308/Desktop/workspace/PartyBattleGame/app/src/main/java/com/example/kzm/partybattlegame";
 
-        SourceRoot root = new SourceRoot(Paths.get("./src/main/java"));
+        SourceRoot root = new SourceRoot(Paths.get(path_root));
         System.out.println(root.toString());
         List<ParseResult<CompilationUnit>> cu2 = root.tryToParse("");
 
@@ -50,18 +50,20 @@ public class Main {
         //判断・警告フェーズ(出力)
         for(String classname:memory_classname){
             System.out.println("\ncheck start:"+classname+"\n");
-            //check_initialize(classname);
-            //judge_case1(classname);
-            //judge_case2(classname);
-            //judge_case3(classname);
+            check_initialize(classname);
+            judge_case1(classname);
+            judge_case2(classname);
+            judge_case3(classname);
             judge_case5and7(classname, "case5");
             judge_case5and7(classname, "case7");
             System.out.println("check finished:"+classname+"\n");
         }
 
-       /*System.out.println(memory_extend.get("MainActivity"));
-        for(String name:memory_classname){
-            if(name.equals(memory_extend.get("MainActivity")))System.out.println("ok");
+        /*for(String name:memory_classname){
+            if(memory_implement.get(name) == null) continue;
+            for(String str:memory_implement.get(name)) {
+               System.out.println(name+":"+str);
+            }
         }*/
 
     }
@@ -115,6 +117,7 @@ public class Main {
                                 + methodname + " to " + methodname.toLowerCase() + " or other name.\n");
                     }
                 }
+                cut_field = "";
                 if (search_set("case2", detail))
                     cut_field = methodname.split("set")[1].toLowerCase();
                 if (!cut_field.equals("")) {
@@ -163,7 +166,7 @@ public class Main {
 
     public static void judge_case5and7(String key, String mode){
         System.out.println("check start:" + mode+"\n");
-            ArrayList<MethodDeclaration> judge_array = memory_classmethod.get(key);//今のクラスのフィールド取得
+            List<MethodDeclaration> judge_array = memory_classmethod.get(key);//今のクラスのフィールド取得
             if(judge_array != null) {
                 for (MethodDeclaration detail:judge_array) {//フィールドを１つずつ見る
 
@@ -266,7 +269,7 @@ public class Main {
     }
 
     public static boolean check_ExtendMethod(String origin, String mode){
-        ArrayList<MethodDeclaration> check_array = memory_classmethod.get(origin);
+        List<MethodDeclaration> check_array = memory_classmethod.get(origin);
         boolean found = false;
         if(check_array != null) {
             for(MethodDeclaration detail:check_array) {
@@ -293,7 +296,7 @@ public class Main {
     }
 
     public static boolean check_ImplementMethod(String origin, String mode){
-        ArrayList<MethodDeclaration> check_array = memory_classmethod.get(origin);
+        List<MethodDeclaration> check_array = memory_classmethod.get(origin);
         boolean found = false;
         if(check_array != null) {
             for(MethodDeclaration detail:check_array) {
@@ -336,18 +339,12 @@ public class Main {
 
     private static class SomeVisitor extends VoidVisitorAdapter<Void> {
         String classname = "";
-        ArrayList<MethodDeclaration> node_list = new ArrayList<>();
-        HashMap<String, String> field_memory = new HashMap<>();
-        ArrayList<FieldDeclaration> field_list = new ArrayList<>();
+        List<MethodDeclaration> methodDeclarations = new ArrayList<>();
+        List<FieldDeclaration> fieldDeclarations = new ArrayList<>();
         ArrayList<String> inner_list = new ArrayList<>();
 
         public SomeVisitor(String name){
             classname = name;
-        }
-
-        @Override
-        public void visit(ImportDeclaration md, Void arg){
-            super.visit(md, arg);
         }
 
         @Override
@@ -367,6 +364,12 @@ public class Main {
                     }
                     memory_implement.put(classname, names);
                 }
+
+                fieldDeclarations = md.getFields();
+                memory_classfield.put(classname, fieldDeclarations);
+                methodDeclarations = md.getMethods();
+                memory_classmethod.put(classname, methodDeclarations);
+
                 super.visit(md, arg);
             } else {
                 if(memory_innerclass.get(classname) == null) inner_list = new ArrayList<>();
@@ -378,19 +381,19 @@ public class Main {
             }
         }
 
-        @Override//宣言名
+        /*@Override//宣言名
         public void visit(FieldDeclaration md, Void arg){
-            field_list.add(md);
-            memory_classfield.put(classname, field_list);
+            fieldDeclarations.add(md);
+            memory_classfield.put(classname, fieldDeclarations);
             super.visit(md, arg);
         }
 
         @Override
         public void visit(MethodDeclaration md, Void arg) {
-            node_list.add(md);
-            memory_classmethod.put(classname, node_list);
+            methodDeclarations.add(md);
+            memory_classmethod.put(classname, methodDeclarations);
             super.visit(md, arg);
-        }
+        }*/
     }
 
     private static class Checking_Case3 extends VoidVisitorAdapter<Void>{
@@ -447,26 +450,23 @@ public class Main {
                                 break;
                             }
                         }//継承元クラス・インターフェースのデフォルトクラスの場合
-                        if(!break_flag) {
-                            boolean warning_flag = false;
-                            System.out.println("warning");
-                            //implementsの確認、再帰関数使用
-                            if (memory_implement.get(classname) != null) {
-                                for (String name_interface : memory_implement.get(classname)) {
-                                    warning_flag = check_ImplementMethod(name_interface, mode);
-                                }
-                            }
 
-                            //extendsの確認、再帰関数使用
-                            if (memory_extend.get(classname) != null && !warning_flag) {
-                                warning_flag = check_ExtendMethod(memory_extend.get(classname), mode);
+                        boolean warning_flag = false;
+                        //implementsの確認、再帰関数使用
+                        if (memory_implement.get(classname) != null) {
+                            for (String name_interface : memory_implement.get(classname)) {
+                                warning_flag = check_ImplementMethod(name_interface, mode);
                             }
+                        }
 
-                            if (warning_flag) {
+                        //extendsの確認、再帰関数使用
+                        if (memory_extend.get(classname) != null && !warning_flag) {
+                            warning_flag = check_ExtendMethod(memory_extend.get(classname), mode);
+                        }
+                        if(!break_flag || warning_flag)  {
                                 System.out.println("line " + md.getRange().get().begin.line);
                                 System.out.println("This code may give the following error after converting to Kotlin: val cannnot reassigned.");
-                                System.out.println("It is recommended to rename the argument \"" + looking_argument + "\" in method \"" + this.methodname + "\".");
-                            }
+                                System.out.println("It is recommended to rename the argument \"" + looking_argument + "\" in method \"" + this.methodname + "\".\n");
                         }
                     }
                 } else if (methodname.matches("set[A-Z].*")) {
@@ -489,26 +489,23 @@ public class Main {
                                     }
                                 }
                             }//継承元クラス・インターフェースのデフォルトクラスの場合
-                            if(!break_flag) {
-                                boolean warning_flag = false;
-                                System.out.println("warning");
-                                //implementsの確認、再帰関数使用
-                                if (memory_implement.get(classname) != null) {
-                                    for (String name_interface : memory_implement.get(classname)) {
-                                        warning_flag = check_ImplementMethod(name_interface, mode);
-                                    }
-                                }
 
-                                //extendsの確認、再帰関数使用
-                                if (memory_extend.get(classname) != null && !warning_flag) {
-                                    warning_flag = check_ExtendMethod(memory_extend.get(classname), mode);
+                            boolean warning_flag = false;
+                            //implementsの確認、再帰関数使用
+                            if (memory_implement.get(classname) != null) {
+                                for (String name_interface : memory_implement.get(classname)) {
+                                    warning_flag = check_ImplementMethod(name_interface, mode);
                                 }
+                            }
+                            //extendsの確認、再帰関数使用
+                            if (memory_extend.get(classname) != null && !warning_flag) {
+                                warning_flag = check_ExtendMethod(memory_extend.get(classname), mode);
+                            }
+                            if(!break_flag || warning_flag) {
 
-                                if (warning_flag) {
                                     System.out.println("line " + md.getRange().get().begin.line);
                                     System.out.println("This code may give the following error after converting to Kotlin: val cannnot reassigned.");
-                                    System.out.println("It is recommended to rename the argument \"" + looking_argument + "\" in method \"" + this.methodname + "\".");
-                                }
+                                    System.out.println("It is recommended to rename the argument \"" + looking_argument + "\" in method \"" + this.methodname + "\".\n");
                             }
                         }
                     }
@@ -518,7 +515,7 @@ public class Main {
     }
 
     public static void check_initialize(String classname){
-            ArrayList<FieldDeclaration> field_list = memory_classfield.get(classname);
+            List<FieldDeclaration> field_list = memory_classfield.get(classname);
             if(field_list != null) {
                 System.out.println("start field checking\n");
                 for (FieldDeclaration field : field_list) {
