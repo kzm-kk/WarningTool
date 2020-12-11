@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 
 public class Main {
+    public static ArrayList<String> memory_classlibrary = new ArrayList<>();
     public static HashMap<String, ArrayList<ImportDeclaration>> memory_import = new HashMap<>();
     public static ArrayList<String> memory_classname = new ArrayList<>();
     public static HashMap<String, String> memory_extend = new HashMap<>();
@@ -50,6 +51,7 @@ public class Main {
         //判断・警告フェーズ(出力)
         for(String classname:memory_classname){
             System.out.println("\ncheck start:"+classname+"\n");
+            fullcheck_import(classname);
             check_initialize(classname);
             judge_case1(classname);
             judge_case2(classname);
@@ -59,12 +61,9 @@ public class Main {
             System.out.println("check finished:"+classname+"\n");
         }
 
-        /*for(String name:memory_classname){
-            if(memory_implement.get(name) == null) continue;
-            for(String str:memory_implement.get(name)) {
-               System.out.println(name+":"+str);
-            }
-        }*/
+        for(String name:memory_classlibrary){
+            System.out.println(name);
+        }
 
     }
 
@@ -546,19 +545,48 @@ public class Main {
         return true;
     }
 
-    public static boolean check_import2(String checkname){
-        for(String classname:memory_classname){
-            for(String implement:memory_implement.get(classname)){
+    public static void check_import2(String checkname){
+        if(memory_classlibrary != null) {
+            boolean flag = true;
+            for(String library:memory_classlibrary){
+                if(library.equals(checkname))System.out.println("\"" + checkname + "\" is probably a library. Please check the detail of library if necessary.\n");
+            }
+        }
+    }
 
+    public static void fullcheck_import(String checkname){
+        boolean flag = true;
+        if(memory_implement.get(checkname) != null) {
+            for (String implement : memory_implement.get(checkname)) {
+                flag = true;
+                for (String classname : memory_classname) {
+                    if (classname.equals(implement)) {
+                        flag = false;
+                        break;
+                    }
+                }
+                if (flag && !duplicate_check(implement)) memory_classlibrary.add(implement);
             }
         }
+        flag = true;
+        String extend = memory_extend.get(checkname);
         for(String classname:memory_classname){
-            if(classname.equals(checkname)){
-                return false;
+            if(classname.equals(extend)) {
+                flag = false;
             }
         }
-        System.out.println("\""+checkname+"\" is probably a library. Please check the detail of library if necessary.");
-        return true;
+        if(extend == null) flag = false;
+        if(flag && !duplicate_check(extend)) memory_classlibrary.add(extend);
+    }
+
+    public static boolean duplicate_check(String name){
+        if(memory_classlibrary != null) {
+            for (String library : memory_classlibrary) {
+                if(library == null) break;
+                if (library.equals(name)) return true;
+            }
+        }
+        return false;
     }
 
     private static void dumpFile(File file, int level){
