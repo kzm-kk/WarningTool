@@ -1,14 +1,20 @@
 import com.github.javaparser.ParseResult;
 import com.github.javaparser.ast.*;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.ConstructorDeclaration;
 import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.expr.AssignExpr;
+import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.ast.stmt.ExpressionStmt;
+import com.github.javaparser.ast.visitor.GenericVisitorAdapter;
 import com.github.javaparser.ast.visitor.VoidVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import com.github.javaparser.symbolsolver.utils.SymbolSolverCollectionStrategy;
 import com.github.javaparser.utils.ProjectRoot;
 import com.github.javaparser.utils.SourceRoot;
+import javassist.compiler.ast.Visitor;
 
 import java.io.File;
 import java.io.IOException;
@@ -26,6 +32,7 @@ public class Main {
     public static HashMap<String, List<FieldDeclaration>> memory_classfield = new HashMap<>();
     public static HashMap<String, List<MethodDeclaration>> memory_classmethod = new HashMap<>();
     public static HashMap<String, ArrayList<String>> memory_innerclass = new HashMap<>();
+    public static HashMap<String, List<ConstructorDeclaration>> memory_constructor = new HashMap<>();
 
     public static void main(String[] args) throws IOException {
 
@@ -367,6 +374,7 @@ public class Main {
                 memory_classfield.put(classname, fieldDeclarations);
                 methodDeclarations = md.getMethods();
                 memory_classmethod.put(classname, methodDeclarations);
+                memory_constructor.put(classname, md.getConstructors());
 
                 super.visit(md, arg);
             } else {
@@ -506,6 +514,16 @@ public class Main {
                     int size = field.getVariables().size();
                     for (int i = 0; i < size; i++) {
                         if (field.getVariable(i).getInitializer().isEmpty()) {
+                            boolean flag = true;
+                            List<ConstructorDeclaration> CdList = memory_constructor.get(classname);
+                            if(CdList != null) {
+                                for (ConstructorDeclaration constructorDeclaration : CdList) {
+                                    check_constructor visitor = new check_constructor(field.getVariable(i).getNameAsString());
+                                    if(constructorDeclaration.accept(visitor, null) != null)
+                                        flag = constructorDeclaration.accept(visitor, null);
+                                }
+                            }
+                            if(flag){
                             System.out.println("line " + field.getRange().get().begin.line);
                             System.out.println("Field \"" + field.getVariable(i).getNameAsString()
                                     + "\" doesn't have initializer.");
@@ -514,10 +532,27 @@ public class Main {
                             else if (field.getVariable(i).getType().isReferenceType())
                                 System.out.println("You should use modifer \"lateinit\" after convert to Kotlin\n");
                         }
+                        }
                     }
                 }
                 System.out.println("finished field checking\n");
             }
+    }
+
+    public static class check_constructor extends GenericVisitorAdapter<Boolean,Void> {
+        String fieldname = "";
+
+        public check_constructor(String fieldname) {
+            this.fieldname = fieldname;
+        }
+
+        @Override
+        public Boolean visit(AssignExpr md, Void arg){
+            if(md.getTarget().toString().equals(fieldname)){
+                return true;
+            }
+            return false;
+        }
     }
 
     public static boolean check_import(String checkname, boolean already){
@@ -528,15 +563,6 @@ public class Main {
         }
         if(!already)System.out.println("\""+checkname+"\" is probably a library. Please check the detail of library if necessary.\n");
         return true;
-    }
-
-    public static void check_import2(String checkname){
-        if(memory_classlibrary != null) {
-            boolean flag = true;
-            for(String library:memory_classlibrary){
-                if(library.equals(checkname))System.out.println("\"" + checkname + "\" is probably a library. Please check the detail of library if necessary.\n");
-            }
-        }
     }
 
     public static void fullcheck_import(String checkname){
