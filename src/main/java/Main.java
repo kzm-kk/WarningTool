@@ -36,7 +36,25 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
 
-        String path_root = "/Users/kzm0308/Desktop/workspace/PartyBattleGame/app/src/main/java/com/example/kzm/partybattlegame";
+        String path_root ="/Users/kzm0308/Desktop/workspace/glass-enterprise-samples-master/GestureLibrarySample/main/src/main/java/com/example/glass/ui";
+        //last"/Users/kzm0308/Desktop/workspace/BabyProfessorAndroid-master/src/com/kilobolt";
+        //webRTC"/Users/kzm0308/Desktop/workspace/glass-enterprise-samples-master/WebRTCSample/app/src/org/appspot/apprtcstandalone";
+        //facetracker"/Users/kzm0308/Desktop/workspace/android-vision-master/visionSamples/FaceTracker/app/src/main/java/com/google/android/gms/samples/vision/face/facetracker"
+        //polygallery"/Users/kzm0308/Desktop/workspace/sceneform-poly-browser-master/app/src/main/java/com/google/devrel/ar/sample/polygallery";
+        //card"/Users/kzm0308/Desktop/workspace/glass-enterprise-samples-master/CardSample/app/src/main/java/com/example/android/glass/cardsample";
+        //googly-eyes"/Users/kzm0308/Desktop/workspace/android-vision-master/visionSamples/googly-eyes/app/src/main/java/com/google/android/gms/samples/vision/face/googlyeyes";
+        //camera2"/Users/kzm0308/Desktop/workspace/glass-enterprise-samples-master/Camera2Sample/app/src/main/java/com/example/glass/camera2sample";
+        //gallery"/Users/kzm0308/Desktop/workspace/glass-enterprise-samples-master/GallerySample/app/src/main/java/com/example/glass/gallerysample";
+        //orc-comp"/Users/kzm0308/Desktop/workspace/android-vision-master/visionSamples/ocr-codelab/ocr-reader-complete/app/src/main/java/com/google/android/gms/samples/vision/ocrreader";
+        //voiceRecog"/Users/kzm0308/Desktop/workspace/glass-enterprise-samples-master/VoiceRecognitionSample/app/src/main/java/com/example/glass/voicerecognitionsample";
+        //guesslibrary"/Users/kzm0308/Desktop/workspace/glass-enterprise-samples-master/GestureLibrarySample/main/src/main/java/com/example/glass/ui";
+        //QRcodeScanner"/Users/kzm0308/Desktop/workspace/glass-enterprise-samples-master/QRCodeScannerSample/app/src/main/java/com/example/glass/qrcodescannersample";
+        //orc-record"/Users/kzm0308/Desktop/workspace/android-vision-master/visionSamples/ocr-reader/app/src/main/java/com/google/android/gms/samples/vision/ocrreader";
+        //barcode"/Users/kzm0308/Desktop/workspace/android-vision-master/visionSamples/barcode-reader/app/src/main/java/com/google/android/gms/samples/vision/barcodereader";
+        //flip-tester"/Users/kzm0308/Desktop/workspace/identity-appflip-tester-android-master/app/src/main/java/com/google/appfliptesttool";
+        //flip-master"/Users/kzm0308/Desktop/workspace/identity-appflip-android-master/app/src/main/java/com/google/appflip_sample_android";
+        //safenet"/Users/kzm0308/Desktop/workspace/android-play-safetynet-master/client/java/SafetyNetSample/Application/src/main/java/com/example/android";
+        //PBG"/Users/kzm0308/Desktop/workspace/PartyBattleGame/app/src/main/java/com/example/kzm/partybattlegame";
 
         SourceRoot root = new SourceRoot(Paths.get(path_root));
         List<ParseResult<CompilationUnit>> cu2 = root.tryToParse("");
@@ -46,8 +64,6 @@ public class Main {
         ProjectRoot projectRoot =
                 new SymbolSolverCollectionStrategy()
                         .collect(Paths.get("/Users/kzm0308/.gradle/caches/modules-2/files-2.1/com.github.javaparser/javaparser-core/3.16.1/440e5d7118e50d544418a96873d6322c4b1d5527/javaparser-core-3.16.1.jar!/com/github/javaparser"));
-
-        dumpFile(new File(tmpname), 0);
 
         //情報収集フェーズ
         for(int i = 0; i < cu2.size(); i++){
@@ -118,7 +134,7 @@ public class Main {
                         System.out.println("-" + detail.getRange().get().end.line);
                         System.out.println("method \"" + methodname + "\" is existing getter" +
                                 " but field \"" + cut_field + "\" is not existing.");
-                        System.out.println("You should change methodname from "
+                        System.out.println("If a correction is necessary, you should change methodname from "
                                 + methodname + " to " + methodname.toLowerCase() + " or other name.\n");
                     }
                 }
@@ -127,10 +143,11 @@ public class Main {
                     cut_field = methodname.split("set")[1].toLowerCase();
                 if (!cut_field.equals("")) {
                     if (!match_field(key, cut_field)) {
-                        System.out.println(detail.getRange().get());
+                        System.out.print("line " + detail.getRange().get().begin.line);
+                        System.out.println("-" + detail.getRange().get().end.line);
                         System.out.println("method \"" + methodname + "\" is existing setter" +
                                 " but field \"" + cut_field + "\" is not existing.");
-                        System.out.println("You should change methodname from "
+                        System.out.println("If a correction is necessary, you should change methodname from "
                                 + methodname + " to " + methodname.toLowerCase() + " or other name.\n");
                     }
                 }
@@ -193,7 +210,7 @@ public class Main {
     }
 
     public static void check_ExtendField(String origin, String extend_field){
-        
+        if(memory_classfield.get(origin) != null){
         for(FieldDeclaration field:memory_classfield.get(origin)){
             int size = field.getVariables().size();
             for (int i = 0; i < size; i++) {
@@ -201,11 +218,11 @@ public class Main {
                 if (extend_field.equals(origin_field)) {
                     System.out.println("same name field:" + origin_field + "(origin), "
                             + extend_field + "(extends)"
-                            + "\nYou should change name of field(extends).\n");
+                            + "\nIf a correction is necessary, you should change name of field(extends).\n");
                     break;
                 }
             }
-        }
+        }}
         if(memory_extend.get(origin) != null) check_ExtendField(memory_extend.get(origin), extend_field);
         if(memory_implement.get(origin) != null){
             for(String key:memory_implement.get(origin)) check_ImplementField(key, extend_field);
@@ -213,15 +230,17 @@ public class Main {
     }
 
     public static void check_ImplementField(String origin, String implement_field){
-        for(FieldDeclaration field:memory_classfield.get(origin)) {
-            int size = field.getVariables().size();
-            for (int i = 0; i < size; i++) {
-                String origin_field = field.getVariable(i).getNameAsString();
-                if (implement_field.equals(origin_field)) {
-                    System.out.println("same name field:" + origin_field + "(interface), "
-                            + implement_field + "(implements-class)"
-                            + "\nYou should change name of field(implements-class).\n");
-                    break;
+        if(memory_classfield.get(origin) != null) {
+            for (FieldDeclaration field : memory_classfield.get(origin)) {
+                int size = field.getVariables().size();
+                for (int i = 0; i < size; i++) {
+                    String origin_field = field.getVariable(i).getNameAsString();
+                    if (implement_field.equals(origin_field)) {
+                        System.out.println("same name field:" + origin_field + "(interface), "
+                                + implement_field + "(implements-class)"
+                                + "\nIf a correction is necessary, you should change name of field(implements-class).\n");
+                        break;
+                    }
                 }
             }
         }
@@ -457,8 +476,8 @@ public class Main {
                         }
                         if(!break_flag || warning_flag)  {
                                 System.out.println("line " + md.getRange().get().begin.line);
-                                System.out.println("This code may give the following error after converting to Kotlin: val cannnot reassigned.");
-                                System.out.println("It is recommended to rename the argument \"" + looking_argument + "\" in method \"" + this.methodname + "\".\n");
+                                System.out.println("This code may give the following error after converting to Kotlin: Val cannnot be reassigned.");
+                                System.out.println("It is recommended to rename the argument \"" + looking_argument + "\" in the method \"" + this.methodname + "\".\n");
                         }
                     }
                 } else if (methodname.matches("set[A-Z].*")) {
@@ -496,8 +515,8 @@ public class Main {
                             if(!break_flag || warning_flag) {
 
                                     System.out.println("line " + md.getRange().get().begin.line);
-                                    System.out.println("This code may give the following error after converting to Kotlin: val cannnot reassigned.");
-                                    System.out.println("It is recommended to rename the argument \"" + looking_argument + "\" in method \"" + this.methodname + "\".\n");
+                                    System.out.println("This code may give the following error after converting to Kotlin: Val cannnot be reassigned.");
+                                    System.out.println("It is recommended to rename the argument \"" + looking_argument + "\" in the method \"" + this.methodname + "\".\n");
                             }
                         }
                     }
@@ -527,11 +546,10 @@ public class Main {
                             System.out.println("line " + field.getRange().get().begin.line);
                             System.out.println("Field \"" + field.getVariable(i).getNameAsString()
                                     + "\" doesn't have initializer.");
-                            if (field.getVariable(i).getType().isPrimitiveType())
-                                System.out.println("You should use modifer \"not-null\" after convert to Kotlin\n");
-                            else if (field.getVariable(i).getType().isReferenceType())
-                                System.out.println("You should use modifer \"lateinit\" after convert to Kotlin\n");
-                        }
+                            if (!field.getVariable(i).getType().isPrimitiveType())
+                                System.out.println("You should use modifer \"lateinit\" after convert to Kotlin");
+                            System.out.println();
+                            }
                         }
                     }
                 }
@@ -548,10 +566,14 @@ public class Main {
 
         @Override
         public Boolean visit(AssignExpr md, Void arg){
-            if(md.getTarget().toString().equals(fieldname)){
-                return true;
+            if(md.getTarget().getChildNodes().get(0).toString().equals("this")){
+                if(md.getTarget().getChildNodes().get(1).toString().equals(fieldname)){
+                    return false;
+                }
+            } else if(md.getTarget().toString().equals(fieldname)){
+                return false;
             }
-            return false;
+            return null;
         }
     }
 
@@ -561,7 +583,7 @@ public class Main {
                 return false;
             }
         }
-        if(!already)System.out.println("\""+checkname+"\" is probably a library. Please check the detail of library if necessary.\n");
+        if(!already)System.out.println("\""+checkname+"\" is probably a library. Please check the detail of the library if necessary.\n");
         return true;
     }
 
@@ -598,39 +620,6 @@ public class Main {
             }
         }
         return false;
-    }
-
-    private static void dumpFile(File file, int level){
-
-        // ファイル一覧取得
-        File[] files = file.listFiles();
-
-        if(files == null){
-            return;
-        }
-
-        // インデント用の空白作成
-        StringBuilder sb = new StringBuilder();
-        for(int i = 0; i < level; i++){
-            sb.append("  ");
-        }
-        String indent = sb.toString();
-
-        System.out.println(indent + "/" + file.getName());
-
-        for (File tmpFile : files) {
-
-            // ディレクトリの場合
-            if(tmpFile.isDirectory()){
-
-                // 再帰呼び出し
-                dumpFile(tmpFile, level + 1);
-
-                // ファイルの場合
-            }else{
-                System.out.println(indent + "  " + tmpFile.getName());
-            }
-        }
     }
 
 }
