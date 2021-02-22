@@ -1,11 +1,12 @@
 public class Person {
 
-    private String name = "";
+    private String name;
     
     private int age;
 
-    public void sleep(){
-        name = "Haru";
+
+    public void sleep(String tmp){
+        name = tmp;
         System.out.println("zzz");
     }
 

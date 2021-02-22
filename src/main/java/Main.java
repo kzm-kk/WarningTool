@@ -1,20 +1,15 @@
 import com.github.javaparser.ParseResult;
 import com.github.javaparser.ast.*;
-import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
-import com.github.javaparser.ast.body.ConstructorDeclaration;
-import com.github.javaparser.ast.body.FieldDeclaration;
-import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.body.*;
 import com.github.javaparser.ast.expr.AssignExpr;
-import com.github.javaparser.ast.expr.Expression;
 import com.github.javaparser.ast.expr.MethodCallExpr;
-import com.github.javaparser.ast.stmt.ExpressionStmt;
 import com.github.javaparser.ast.visitor.GenericVisitorAdapter;
 import com.github.javaparser.ast.visitor.VoidVisitor;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import com.github.javaparser.symbolsolver.utils.SymbolSolverCollectionStrategy;
 import com.github.javaparser.utils.ProjectRoot;
 import com.github.javaparser.utils.SourceRoot;
-import javassist.compiler.ast.Visitor;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,10 +28,11 @@ public class Main {
     public static HashMap<String, List<MethodDeclaration>> memory_classmethod = new HashMap<>();
     public static HashMap<String, ArrayList<String>> memory_innerclass = new HashMap<>();
     public static HashMap<String, List<ConstructorDeclaration>> memory_constructor = new HashMap<>();
+    public static HashMap<String, HashMap<String, HashMap<String, Object>>> memory_field_im = new HashMap<>();
 
     public static void main(String[] args) throws IOException {
 
-        String path_root = "/Users/kzm0308/Desktop/workspace/PartyBattleGame/app/src/main/java/com/example/kzm/partybattlegame";
+        String path_root = "/Users/kzm0308/IdeaProjects/WarningTool/src/main/java";
 
         SourceRoot root = new SourceRoot(Paths.get(path_root));
         List<ParseResult<CompilationUnit>> cu2 = root.tryToParse("");
@@ -58,7 +54,8 @@ public class Main {
         for(String classname:memory_classname){
             System.out.println("\ncheck start:"+classname+"\n");
             fullcheck_import(classname);
-            check_initialize(classname);
+            check_initialize2(classname);
+            check_allparameter(classname);
             judge_case1(classname);
             judge_case2(classname);
             judge_case3(classname);
@@ -347,6 +344,7 @@ public class Main {
         List<MethodDeclaration> methodDeclarations = new ArrayList<>();
         List<FieldDeclaration> fieldDeclarations = new ArrayList<>();
         ArrayList<String> inner_list = new ArrayList<>();
+        HashMap<String,HashMap<String,Object>> field_data = new HashMap<>();
 
         public SomeVisitor(String name){
             classname = name;
@@ -372,6 +370,38 @@ public class Main {
 
                 fieldDeclarations = md.getFields();
                 memory_classfield.put(classname, fieldDeclarations);
+                //ここから新しいやつ
+                for (FieldDeclaration field : fieldDeclarations) {
+                    int size = field.getVariables().size();
+                    for (int i = 0; i < size; i++) {
+                        String fieldname = field.getVariable(i).getNameAsString();
+                        HashMap<String,Object> data = new HashMap<>();
+                        //name
+                        data.put("type",field.getVariable(i).getTypeAsString());
+                        //initial,nullable
+                        if (field.getVariable(i).getInitializer().isEmpty()) {
+                            data.put("initial",null);
+                            if(field.getVariable(i).getType().isPrimitiveType())
+                                data.put("nullable",false);
+                            else data.put("nullable",true);
+                        } else {
+                            data.put("initial", field.getVariable(i).getInitializer());
+                            data.put("nullable",false);
+                        }
+                        //need_fix
+                        data.put("need_fix", false);
+                        //range
+                        data.put("range",field.getVariable(i).getRange().get().toString());
+                        //istype
+                        if(field.getVariable(i).getType().isPrimitiveType()) data.put("IsType", 0);
+                        else if(field.getVariable(i).getType().isReferenceType()) data.put("IsType", 1);
+                        else data.put("IsType", 2);
+
+                        field_data.put(fieldname, data);
+                    }
+                }
+                memory_field_im.put(classname, field_data);
+                //ここまで
                 methodDeclarations = md.getMethods();
                 memory_classmethod.put(classname, methodDeclarations);
                 memory_constructor.put(classname, md.getConstructors());
@@ -506,6 +536,67 @@ public class Main {
         }
     }
 
+    public static void check_initialize2(String classname){
+        HashMap<String,HashMap<String,Object>> field_list2 = memory_field_im.get(classname);
+        if(field_list2 != null){
+            System.out.println("start field checking\n");
+            for(String fieldname : field_list2.keySet()){
+                HashMap<String, Object> detail = field_list2.get(fieldname);
+                if((boolean)detail.get("nullable")){
+                    boolean flag = true;
+                    List<ConstructorDeclaration> CdList = memory_constructor.get(classname);
+                    if(CdList != null) {
+                        for (ConstructorDeclaration constructorDeclaration : CdList) {
+                            check_constructor visitor = new check_constructor(classname,fieldname);
+                            if(constructorDeclaration.accept(visitor, null) != null)
+                                flag = constructorDeclaration.accept(visitor, null);
+                        }
+                    }
+                    List<MethodDeclaration> MdList = memory_classmethod.get(classname);
+                    if(MdList != null) {
+                        for (MethodDeclaration methodDeclaration: MdList) {
+                            check_nullable visitor = new check_nullable(classname, fieldname);
+                            methodDeclaration.accept(visitor, null);
+                        }
+                    }
+                    if(flag && !(boolean)detail.get("nullable")){
+                        if ((int)detail.get("IsType") != Integer.parseInt("0")) {
+                            System.out.println(detail.get("range"));
+                            System.out.println("Field \"" + fieldname + "\" doesn't have initializer.");
+
+                            System.out.println("You should use modifer \"lateinit\" after convert to Kotlin.\n");
+                            detail.put("need_fix",true);
+                        }// else System.out.println("");
+                    }
+                }
+            }
+            System.out.println("finished field checking\n");
+        }
+    }
+
+    public static void check_allparameter(String classname){
+        HashMap<String,HashMap<String,Object>> field_list2 = memory_field_im.get(classname);
+        if(field_list2 != null){
+            System.out.println("start parameter checking\n");
+            for(String fieldname : field_list2.keySet()){
+                HashMap<String, Object> detail = field_list2.get(fieldname);
+                if(!(boolean)detail.get("nullable")){
+                    List<MethodDeclaration> MdList = memory_classmethod.get(classname);
+                    if(MdList != null) {
+                        for(MethodDeclaration methodDeclaration: MdList){
+                            for(Parameter parameter :methodDeclaration.getParameters()) {
+                                check_parameter visitor = new check_parameter
+                                        (classname, fieldname,parameter.getNameAsString(), parameter.getRange().get().toString());
+                                methodDeclaration.accept(visitor, null);
+                            }
+                        }
+                    }
+                }
+            }
+            System.out.println("finished parameter checking\n");
+        }
+    }
+
     public static void check_initialize(String classname){
             List<FieldDeclaration> field_list = memory_classfield.get(classname);
             if(field_list != null) {
@@ -518,7 +609,7 @@ public class Main {
                             List<ConstructorDeclaration> CdList = memory_constructor.get(classname);
                             if(CdList != null) {
                                 for (ConstructorDeclaration constructorDeclaration : CdList) {
-                                    check_constructor visitor = new check_constructor(field.getVariable(i).getNameAsString());
+                                    check_constructor visitor = new check_constructor(classname, field.getVariable(i).getNameAsString());
                                     if(constructorDeclaration.accept(visitor, null) != null)
                                         flag = constructorDeclaration.accept(visitor, null);
                                 }
@@ -540,18 +631,76 @@ public class Main {
     }
 
     public static class check_constructor extends GenericVisitorAdapter<Boolean,Void> {
+        String classname = "";
         String fieldname = "";
 
-        public check_constructor(String fieldname) {
+        public check_constructor(String classname, String fieldname) {
+            this.classname = classname;
             this.fieldname = fieldname;
         }
 
         @Override
         public Boolean visit(AssignExpr md, Void arg){
             if(md.getTarget().toString().equals(fieldname)){
-                return true;
+                memory_field_im.get(classname).get(fieldname).put("nullable",true);
+                memory_field_im.get(classname).get(fieldname).put("need_fix",false);
+                return false;
             }
-            return false;
+            memory_field_im.get(classname).get(fieldname).put("nullable",false);
+            memory_field_im.get(classname).get(fieldname).put("need_fix",true);
+            return true;
+        }
+    }
+
+    public static class check_nullable extends VoidVisitorAdapter<Void> {
+        String classname = "";
+        String fieldname = "";
+
+        public check_nullable(String classname, String fieldname) {
+            this.classname = classname;
+            this.fieldname = fieldname;
+        }
+
+        @Override
+        public void visit(AssignExpr md, Void arg){
+            if(md.getTarget().toString().equals(fieldname)){
+                if(md.getOperator().name().equals("ASSIGN")){
+                    if(md.getValue().toString().equals("null")){
+                        memory_field_im.get(classname).get(fieldname).put("nullable",true);
+                        memory_field_im.get(classname).get(fieldname).put("need_fix",false);
+                    }
+
+                }
+            }
+            memory_field_im.get(classname).get(fieldname).put("nullable",false);
+            memory_field_im.get(classname).get(fieldname).put("need_fix",true);
+        }
+    }
+
+    public static class check_parameter extends VoidVisitorAdapter<Void> {
+        String classname = "";
+        String fieldname = "";
+        String parameter = "";
+        String range = "";
+
+        public check_parameter(String classname, String fieldname, String parameter, String range) {
+            this.classname = classname;
+            this.fieldname = fieldname;
+            this.parameter = parameter;
+            this.range = range;
+        }
+
+        @Override
+        public void visit(AssignExpr md, Void arg){
+            if(md.getValue().toString().equals(parameter)){
+                if(md.getTarget().toString().equals(fieldname)){
+                    if((boolean)memory_field_im.get(classname).get(fieldname).get("need_fix")){
+                        System.out.println(range+"\nparameter:"+parameter+" will be changed nullable parameter after conversion.\n" +
+                                "You should use @Notnull annotation.\n");
+                    }
+                }
+            }
+
         }
     }
 
