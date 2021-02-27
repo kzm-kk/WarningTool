@@ -190,19 +190,19 @@ public class Main {
     }
 
     public static void check_ExtendField(String origin, String extend_field){
-        
-        for(FieldDeclaration field:memory_classfield.get(origin)){
-            int size = field.getVariables().size();
-            for (int i = 0; i < size; i++) {
-                String origin_field = field.getVariable(i).getNameAsString();
-                if (extend_field.equals(origin_field)) {
-                    System.out.println("same name field:" + origin_field + "(origin), "
-                            + extend_field + "(extends)"
-                            + "\nYou should change name of field(extends).\n");
-                    break;
+        if(memory_classfield.get(origin) != null){
+            for(FieldDeclaration field:memory_classfield.get(origin)){
+                int size = field.getVariables().size();
+                for (int i = 0; i < size; i++) {
+                    String origin_field = field.getVariable(i).getNameAsString();
+                    if (extend_field.equals(origin_field)) {
+                        System.out.println("same name field:" + origin_field + "(origin), "
+                                + extend_field + "(extends)"
+                                + "\nIf a correction is necessary, you should change name of field(extends).\n");
+                        break;
+                    }
                 }
-            }
-        }
+            }}
         if(memory_extend.get(origin) != null) check_ExtendField(memory_extend.get(origin), extend_field);
         if(memory_implement.get(origin) != null){
             for(String key:memory_implement.get(origin)) check_ImplementField(key, extend_field);
@@ -210,15 +210,17 @@ public class Main {
     }
 
     public static void check_ImplementField(String origin, String implement_field){
-        for(FieldDeclaration field:memory_classfield.get(origin)) {
-            int size = field.getVariables().size();
-            for (int i = 0; i < size; i++) {
-                String origin_field = field.getVariable(i).getNameAsString();
-                if (implement_field.equals(origin_field)) {
-                    System.out.println("same name field:" + origin_field + "(interface), "
-                            + implement_field + "(implements-class)"
-                            + "\nYou should change name of field(implements-class).\n");
-                    break;
+        if(memory_classfield.get(origin) != null) {
+            for (FieldDeclaration field : memory_classfield.get(origin)) {
+                int size = field.getVariables().size();
+                for (int i = 0; i < size; i++) {
+                    String origin_field = field.getVariable(i).getNameAsString();
+                    if (implement_field.equals(origin_field)) {
+                        System.out.println("same name field:" + origin_field + "(interface), "
+                                + implement_field + "(implements-class)"
+                                + "\nIf a correction is necessary, you should change name of field(implements-class).\n");
+                        break;
+                    }
                 }
             }
         }
