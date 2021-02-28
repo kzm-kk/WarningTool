@@ -32,7 +32,7 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
 
-        String path_root = "/Users/kzm0308/IdeaProjects/WarningTool/src/main/java";
+        String path_root = "/Users/kzm0308/Desktop/workspace/android-play-safetynet-master/client/java/SafetyNetSample/Application/src/main/java/com/example/android";
 
         SourceRoot root = new SourceRoot(Paths.get(path_root));
         List<ParseResult<CompilationUnit>> cu2 = root.tryToParse("");
@@ -561,6 +561,13 @@ public class Main {
                             methodDeclaration.accept(visitor, null);
                         }
                     }
+                    List<FieldDeclaration> FdList = memory_classfield.get(classname);
+                    if(FdList != null && !(boolean)detail.get("nullable")) {
+                        for (FieldDeclaration fieldDeclaration : FdList) {
+                            check_nullable visitor = new check_nullable(classname, fieldname);
+                            fieldDeclaration.accept(visitor, null);
+                        }
+                    }
                     if(flag && !(boolean)detail.get("nullable")){
                         if ((int)detail.get("IsType") != Integer.parseInt("0")) {
                             System.out.println(detail.get("range"));
@@ -665,17 +672,19 @@ public class Main {
 
         @Override
         public void visit(AssignExpr md, Void arg){
+            boolean flag = false;
             if(md.getTarget().toString().equals(fieldname)){
                 if(md.getOperator().name().equals("ASSIGN")){
                     if(md.getValue().toString().equals("null")){
                         memory_field_im.get(classname).get(fieldname).put("nullable",true);
                         memory_field_im.get(classname).get(fieldname).put("need_fix",false);
-                    }
-
-                }
+                    } else flag = true;
+                } else flag = true;
+            } else flag = true;
+            if(flag) {
+                memory_field_im.get(classname).get(fieldname).put("nullable", false);
+                memory_field_im.get(classname).get(fieldname).put("need_fix", true);
             }
-            memory_field_im.get(classname).get(fieldname).put("nullable",false);
-            memory_field_im.get(classname).get(fieldname).put("need_fix",true);
         }
     }
 
