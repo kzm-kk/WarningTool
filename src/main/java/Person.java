@@ -1,9 +1,18 @@
 public class Person {
 
     private String name;
-    
+    private String[] names;
+    private Case_Problem3.Car car;
+    private int[] nums;
     private int age;
 
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
+    }
 
     public void sleep(String tmp){
         name = tmp;

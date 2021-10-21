@@ -32,8 +32,7 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
 
-        String path_root = "/Users/kzm0308/Desktop/workspace/android-play-safetynet-master/client/java/SafetyNetSample/Application/src/main/java/com/example/android";
-
+        String path_root = "/Users/kzm0308/IdeaProjects/WarningTool/src";
         SourceRoot root = new SourceRoot(Paths.get(path_root));
         List<ParseResult<CompilationUnit>> cu2 = root.tryToParse("");
 
@@ -329,7 +328,7 @@ public class Main {
         public void visit(ImportDeclaration md, Void arg){
             super.visit(md, arg);
             Import_list.add(md);
-            
+
         }
 
         @Override
